@@ -5,20 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Painel de Cupons</title>
 
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
 <style>
 body{
   font-family: Inter, sans-serif;
   margin:0;
-  background:#0f172a;
+  background:#0b1220;
   color:#fff;
 }
 
 .header{
   padding:20px;
   font-size:22px;
-  font-weight:700;
-  background:#020617;
+  font-weight:800;
+  background:linear-gradient(90deg,#020617,#020617,#0f172a);
   border-bottom:1px solid #1e293b;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.status{
+  font-size:12px;
+  color:#22c55e;
 }
 
 .filtros{
@@ -29,15 +39,19 @@ body{
 }
 
 .filtros input,
-.filtros select,
-.filtros button{
+.filtros select{
   padding:10px;
-  border-radius:8px;
-  border:none;
+  border-radius:10px;
+  border:1px solid #1e293b;
+  background:#020617;
+  color:#fff;
 }
 
 .filtros button{
+  padding:10px 20px;
   background:#22c55e;
+  border:none;
+  border-radius:10px;
   color:#fff;
   font-weight:600;
   cursor:pointer;
@@ -51,22 +65,23 @@ body{
 
 .card{
   flex:1;
-  background:#020617;
+  background:linear-gradient(145deg,#020617,#020617,#020617);
   padding:20px;
-  border-radius:12px;
+  border-radius:16px;
   border:1px solid #1e293b;
+  box-shadow:0 10px 30px rgba(0,0,0,0.3);
 }
 
 .card h3{
   margin:0;
-  font-size:14px;
+  font-size:13px;
   color:#94a3b8;
 }
 
 .card p{
-  font-size:22px;
+  font-size:26px;
   margin-top:10px;
-  font-weight:700;
+  font-weight:800;
 }
 
 .table{
@@ -97,11 +112,13 @@ tr:hover{
 
 <body>
 
-<div class="header">📊 Painel de Cupons</div>
+<div class="header">
+  📊 Painel de Cupons
+  <div class="status" id="status">Atualizando...</div>
+</div>
 
 <!-- FILTROS -->
 <div class="filtros">
-
   <input type="date" id="dataInicio">
   <input type="date" id="dataFim">
 
@@ -110,7 +127,6 @@ tr:hover{
   </select>
 
   <button onclick="filtrar()">Filtrar</button>
-
 </div>
 
 <!-- CARDS -->
@@ -151,23 +167,50 @@ tr:hover{
 const API = "https://mighty-hat-clubs-tend.trycloudflare.com/cupons"
 
 let dados = []
+let filtroAtivo = null
 
-// 🔥 CARREGA DADOS
+// 🔥 CARREGAR DADOS
 async function carregar(){
-  const res = await fetch(API)
-  dados = await res.json()
 
-  preencherEmpresas()
-  render(dados)
+  try{
+    const res = await fetch(API)
+    dados = await res.json()
+
+    atualizarStatus("Atualizado agora")
+
+    preencherEmpresas()
+
+    if(filtroAtivo){
+      aplicarFiltroSalvo()
+    }else{
+      render(dados)
+    }
+
+  }catch(e){
+    atualizarStatus("Erro ao atualizar")
+  }
 }
 
-// 🔥 PREENCHE SELECT DE EMPRESAS
+// 🔥 STATUS VISUAL
+function atualizarStatus(txt){
+  const el = document.getElementById("status")
+  el.innerText = txt
+
+  setTimeout(()=>{
+    el.innerText = "Atualizando em tempo real..."
+  },2000)
+}
+
+// 🔥 EMPRESAS
 function preencherEmpresas(){
+
   const select = document.getElementById("empresaFiltro")
+
+  if(select.options.length > 1) return
 
   const empresas = [...new Set(dados.map(d => d.empresa))]
 
-  empresas.forEach(emp => {
+  empresas.forEach(emp=>{
     const opt = document.createElement("option")
     opt.value = emp
     opt.innerText = emp
@@ -182,8 +225,16 @@ function filtrar(){
   const fim = document.getElementById("dataFim").value
   const empresa = document.getElementById("empresaFiltro").value
 
-  let filtrado = dados.filter(item => {
+  filtroAtivo = {inicio,fim,empresa}
 
+  aplicarFiltroSalvo()
+}
+
+function aplicarFiltroSalvo(){
+
+  const {inicio,fim,empresa} = filtroAtivo
+
+  const filtrado = dados.filter(item=>{
     let ok = true
 
     if(inicio && item.data < inicio) ok = false
@@ -196,7 +247,7 @@ function filtrar(){
   render(filtrado)
 }
 
-// 🔥 RENDERIZA
+// 🔥 RENDER
 function render(lista){
 
   let total = 0
@@ -205,15 +256,16 @@ function render(lista){
   const tbody = document.getElementById("tabela")
   tbody.innerHTML = ""
 
-  lista.forEach(item => {
+  lista.forEach(item=>{
 
     if(item.cancelado == 0){
       total += Number(item.valor)
       qtd++
     }
 
-    const horaFormatada =
-      item.hora.substring(0,2) + ":" + item.hora.substring(2,4)
+    const hora =
+      item.hora.substring(0,2) + ":" +
+      item.hora.substring(2,4)
 
     const tr = document.createElement("tr")
 
@@ -222,7 +274,7 @@ function render(lista){
       <td>${item.empresa}</td>
       <td>R$ ${Number(item.valor).toFixed(2)}</td>
       <td>${item.data}</td>
-      <td>${horaFormatada}</td>
+      <td>${hora}</td>
       <td>${item.numero_caixa}</td>
     `
 
@@ -242,6 +294,11 @@ function render(lista){
 
 // 🚀 INICIA
 carregar()
+
+// 🔁 AUTO UPDATE A CADA 5s
+setInterval(()=>{
+  carregar()
+},5000)
 
 </script>
 
