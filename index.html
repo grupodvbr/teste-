@@ -21,6 +21,28 @@ body{
   border-bottom:1px solid #1e293b;
 }
 
+.filtros{
+  padding:20px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.filtros input,
+.filtros select,
+.filtros button{
+  padding:10px;
+  border-radius:8px;
+  border:none;
+}
+
+.filtros button{
+  background:#22c55e;
+  color:#fff;
+  font-weight:600;
+  cursor:pointer;
+}
+
 .cards{
   display:flex;
   gap:20px;
@@ -77,6 +99,21 @@ tr:hover{
 
 <div class="header">📊 Painel de Cupons</div>
 
+<!-- FILTROS -->
+<div class="filtros">
+
+  <input type="date" id="dataInicio">
+  <input type="date" id="dataFim">
+
+  <select id="empresaFiltro">
+    <option value="">Todas Empresas</option>
+  </select>
+
+  <button onclick="filtrar()">Filtrar</button>
+
+</div>
+
+<!-- CARDS -->
 <div class="cards">
   <div class="card">
     <h3>Total de Vendas</h3>
@@ -92,6 +129,7 @@ tr:hover{
   </div>
 </div>
 
+<!-- TABELA -->
 <div class="table">
   <table>
     <thead>
@@ -110,22 +148,68 @@ tr:hover{
 
 <script>
 
-// 🔥 COLOQUE SUA URL AQUI
 const API = "https://mighty-hat-clubs-tend.trycloudflare.com/cupons"
 
-fetch(API)
-.then(res => res.json())
-.then(data => {
+let dados = []
+
+// 🔥 CARREGA DADOS
+async function carregar(){
+  const res = await fetch(API)
+  dados = await res.json()
+
+  preencherEmpresas()
+  render(dados)
+}
+
+// 🔥 PREENCHE SELECT DE EMPRESAS
+function preencherEmpresas(){
+  const select = document.getElementById("empresaFiltro")
+
+  const empresas = [...new Set(dados.map(d => d.empresa))]
+
+  empresas.forEach(emp => {
+    const opt = document.createElement("option")
+    opt.value = emp
+    opt.innerText = emp
+    select.appendChild(opt)
+  })
+}
+
+// 🔥 FILTRO
+function filtrar(){
+
+  const inicio = document.getElementById("dataInicio").value
+  const fim = document.getElementById("dataFim").value
+  const empresa = document.getElementById("empresaFiltro").value
+
+  let filtrado = dados.filter(item => {
+
+    let ok = true
+
+    if(inicio && item.data < inicio) ok = false
+    if(fim && item.data > fim) ok = false
+    if(empresa && item.empresa !== empresa) ok = false
+
+    return ok
+  })
+
+  render(filtrado)
+}
+
+// 🔥 RENDERIZA
+function render(lista){
 
   let total = 0
-  let qtd = data.length
+  let qtd = 0
 
   const tbody = document.getElementById("tabela")
+  tbody.innerHTML = ""
 
-  data.forEach(item => {
+  lista.forEach(item => {
 
     if(item.cancelado == 0){
       total += Number(item.valor)
+      qtd++
     }
 
     const horaFormatada =
@@ -145,7 +229,7 @@ fetch(API)
     tbody.appendChild(tr)
   })
 
-  const ticket = total / qtd || 0
+  const ticket = qtd ? total / qtd : 0
 
   document.getElementById("total").innerText =
     "R$ " + total.toFixed(2)
@@ -154,8 +238,11 @@ fetch(API)
 
   document.getElementById("ticket").innerText =
     "R$ " + ticket.toFixed(2)
+}
 
-})
+// 🚀 INICIA
+carregar()
+
 </script>
 
 </body>
