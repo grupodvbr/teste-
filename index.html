@@ -157,12 +157,24 @@ const API = "https://nickname-the-light-flu.trycloudflare.com/cupons"
 let dados = []
 let filtroAtivo = null
 
+// 🔥 CONTROLE DE INCREMENTO
+let ultimosIds = new Set()
+let incrementoEmpresa = {}
+
+// 🔥 ORDEM FIXA
+const ORDEM_EMPRESAS = [
+  "VAREJO_URL_VILLA",
+  "VAREJO_URL_PADARIA",
+  "VAREJO_URL_DELICIA",
+  "VAREJO_URL_MERCATTO"
+]
+
 // 🔥 DATA HOJE
 function hoje(){
   return new Date().toISOString().slice(0,10)
 }
 
-// 🔥 FORMATO REAL
+// 🔥 FORMATO
 function formatar(v){
   return v.toLocaleString("pt-BR",{minimumFractionDigits:2})
 }
@@ -171,9 +183,13 @@ function formatar(v){
 async function carregar(){
   try{
     const res = await fetch(API)
-    dados = await res.json()
+    const novosDados = await res.json()
 
     atualizarStatus("Atualizado agora")
+
+    detectarIncremento(novosDados)
+
+    dados = novosDados
 
     preencherEmpresas()
 
@@ -186,6 +202,28 @@ async function carregar(){
   }catch{
     atualizarStatus("Erro")
   }
+}
+
+// 🔥 DETECTAR NOVAS VENDAS
+function detectarIncremento(novos){
+
+  let novosIds = new Set()
+  incrementoEmpresa = {}
+
+  novos.forEach(item=>{
+    novosIds.add(item.id)
+
+    if(!ultimosIds.has(item.id) && item.cancelado == 0){
+
+      if(!incrementoEmpresa[item.empresa]){
+        incrementoEmpresa[item.empresa] = 0
+      }
+
+      incrementoEmpresa[item.empresa] += 1
+    }
+  })
+
+  ultimosIds = novosIds
 }
 
 // 🔥 STATUS
@@ -251,6 +289,7 @@ function render(lista){
   cards.innerHTML = ""
 
   let totalGeral = 0
+  let totalHojeGeral = 0
 
   const porEmpresa = {}
   const hojeEmpresa = {}
@@ -260,6 +299,10 @@ function render(lista){
     if(item.cancelado == 0){
 
       totalGeral += Number(item.valor)
+
+      if(item.data === hoje()){
+        totalHojeGeral += Number(item.valor)
+      }
 
       // TOTAL PERIODO
       if(!porEmpresa[item.empresa]) porEmpresa[item.empresa] = 0
@@ -294,16 +337,25 @@ function render(lista){
     <div class="card">
       <h3>Total Geral</h3>
       <div class="valor">R$ ${formatar(totalGeral)}</div>
+      <div class="hoje">Hoje: R$ ${formatar(totalHojeGeral)}</div>
     </div>
   `
 
-  // 🔥 EMPRESAS
-  Object.keys(porEmpresa).forEach(emp=>{
+  // 🔥 EMPRESAS NA ORDEM FIXA
+  ORDEM_EMPRESAS.forEach(emp=>{
+
+    if(!porEmpresa[emp]) return
+
+    const incremento = incrementoEmpresa[emp] || 0
+
     cards.innerHTML += `
       <div class="card">
         <h3>${emp}</h3>
         <div class="valor">R$ ${formatar(porEmpresa[emp])}</div>
-        <div class="hoje">Hoje: R$ ${formatar(hojeEmpresa[emp] || 0)}</div>
+        <div class="hoje">
+          Hoje: R$ ${formatar(hojeEmpresa[emp] || 0)}
+          ${incremento > 0 ? ` • + ${incremento} vendas` : ``}
+        </div>
       </div>
     `
   })
@@ -312,7 +364,7 @@ function render(lista){
 // 🚀 INICIO
 carregar()
 
-// 🔁 AUTO UPDATE
+// 🔁 TEMPO REAL
 setInterval(()=>{
   carregar()
 },5000)
