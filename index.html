@@ -183,11 +183,17 @@ function formatar(v){
 async function carregar(){
   try{
     const res = await fetch(API)
-    const novosDados = await res.json()
 
-    atualizarStatus("Atualizado agora")
+    
+const novosDados = await res.json()
 
-    detectarIncremento(novosDados)
+// 🔥 CORREÇÃO
+const lista = novosDados.vendas || []
+
+detectarIncremento(lista)
+
+dados = lista
+    
 
     dados = novosDados
 
@@ -213,7 +219,7 @@ function detectarIncremento(novos){
   novos.forEach(item=>{
     novosIds.add(item.id)
 
-    if(!ultimosIds.has(item.id) && item.cancelado == 0){
+    if(!ultimosIds.has(item.id) && !item.cancelada){
 
       if(!incrementoEmpresa[item.empresa]){
         incrementoEmpresa[item.empresa] = 0
@@ -296,7 +302,7 @@ function render(lista){
 
   lista.forEach(item=>{
 
-    if(item.cancelado == 0){
+    if(!item.cancelada){
 
       totalGeral += Number(item.valor)
 
@@ -315,8 +321,7 @@ function render(lista){
       }
     }
 
-    const hora =
-      item.hora.substring(0,2)+":"+item.hora.substring(2,4)
+const hora = item.hora
 
     const tr = document.createElement("tr")
 
@@ -326,7 +331,7 @@ function render(lista){
       <td>R$ ${formatar(Number(item.valor))}</td>
       <td>${item.data}</td>
       <td>${hora}</td>
-      <td>${item.numero_caixa}</td>
+      <td>${item.numeroCaixa}</td>
     `
 
     tbody.appendChild(tr)
